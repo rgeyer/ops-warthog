@@ -53,7 +53,7 @@ module Warthog; module CLI
       opts.separator ""
       opts.separator "General options:"
       opts.on('-H', '--hostname HOSTNAME',              String,              "A10 Load Balancer hostname")                         { |o| @options[:hostname] = o }
-      opts.on('-u', '--username USERNAME',              String,              "Username")                                           { |o| @options[:username] = o }
+      opts.on('-l', '--login USERNAME',                 String,              "Username")                                           { |o| @options[:username] = o }
       opts.on('-f', '--fake DIRECTORY',                 String,              "Path to directory with output")                      { |o| @options[:fake] = o }
       opts.on('-d', '--debug',                                               "Enable debug mode")                                  { @options[:debug] = true}
       opts.on('-a', '--about',                                               "Display #{ID} information")                          { output_message ABOUT, 0 }
