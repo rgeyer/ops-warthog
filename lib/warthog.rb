@@ -1,0 +1,3 @@
+module Warthog
+
+end
