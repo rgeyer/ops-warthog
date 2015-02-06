@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = ">= 1.3.5"
 
   s.add_dependency('httparty')
+  s.add_dependency('etc')
 
   s.files        = Dir['lib/**/*.rb'] + Dir['bin/*'] + %w(LICENSE README.md)
   s.executables  = %w(warthog)
