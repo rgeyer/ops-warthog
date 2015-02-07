@@ -16,9 +16,8 @@ module Warthog; module A10
       @hostname = hostname
       @session_id = nil
       @api_version = nil
-
-      axapi :authenticate, :username => username, :password => password
-      raise StandardError, "unable to obtain session id" unless @session_id
+      @username = username
+      @password = password
     end
 
     def slb_service_group_all
@@ -62,7 +61,7 @@ module Warthog; module A10
         end
       else
         API_VERSIONS.each do |api_version|
-         r = self.class.get("https://#@hostname/services/rest/#{api_version}/?method=#{method}&username=#{paramvalues[:username]}&password=#{paramvalues[:password]}")
+         r = self.class.get("https://#@hostname/services/rest/#{api_version}/?method=authenticate&username=#{@username}&password=#{@password}")
          if r.code == 200
            if r['response']['status'] == 'ok'
              @session_id = r['response']['session_id']
@@ -76,6 +75,7 @@ module Warthog; module A10
          end
          raise StandardError, "unable to obtain session id" unless @session_id
         end
+        axapi(method,paramvalues)
       end
     end
 
