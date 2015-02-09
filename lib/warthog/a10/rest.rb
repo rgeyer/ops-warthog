@@ -22,7 +22,7 @@ module Warthog; module A10
 
     def slb_service_group_all
       output = ''
-      service_group_list = axapi 'slb.service_group.getAll'
+      service_group_list = axapi 'slb.service_group.getAll', 'get'
       service_group_list['response']['service_group_list']['service_group'].each do |service_group|
         name = service_group['name']
         service_group['member_list']['member'].each do |member|
@@ -34,7 +34,7 @@ module Warthog; module A10
 
     def slb_service_group_search(name)
       output = ''
-      service_group = axapi 'slb.service_group.search', :name => name
+      service_group = axapi 'slb.service_group.search', 'get', :name => name
       service_group['response']['service_group']['member_list']['member'].each do |member|
         output << "%-16s %12s:%-5s %s %s %s\n" % [name,member['server'],member['port'],member['template'],member['priority'],member['status']]
       end
@@ -43,19 +43,43 @@ module Warthog; module A10
 
     protected
 
-    def axapi(method,paramvalues={})
+    def axapi(method,verb,paramvalues={})
+      always_uri_params = ["format","session_id","method"]
       if @session_id and @api_version
-        uri = "https://#@hostname/services/rest/#@api_version/?session_id=#@session_id&method=#{method}"
-        paramvalues.each do |param,value|
-          uri << "&#{param}=#{value}"
+        r = nil
+        if verb == 'get'
+          params_to_encode = {session_id: @session_id, method: method}.merge(paramvalues)
+          params = URI.encode_www_form(params_to_encode)
+          uri = "https://#@hostname/services/rest/#@api_version/?#{params}"
+          r = self.class.get(uri)
+        else
+          # TODO: Implement everything else, supplying paramvalues as a json payload.
+          puts "Verb was #{verb.upcase}"
         end
-        r = self.class.get(uri)
+
         if r.code == 200
-          if r['response']['status'] == 'ok'
-            return r
-          elsif r['response']['status'] == 'fail'
-            raise AXapiError, r['response']['error']['msg']
+          response = r
+          code = 0
+          message = ""
+          error_message = ""
+          # JSON responses don't always have a "response" element, and their
+          # "error" element is actually named "err"
+          if r.headers['content-type'] == 'application/json'
+            response = JSON.parse(r.body)
+            if response.has_key?('response') && response['response']['status'] == 'fail'
+              code = response['response']['err']['code']
+              message = response['response']['err']['msg']
+            end
+          else
+            if response['response']['status'] == 'fail'
+              code = response['response']['error']['code']
+              message = response['response']['error']['msg']
+            end
           end
+
+          error_message = "Code: #{code} Message: #{message}"
+          raise AXapiError, error_message if code
+          return r
         else
           raise HTTPError, "HTTP code: #{r.code}"
         end
@@ -75,7 +99,7 @@ module Warthog; module A10
          end
          raise StandardError, "unable to obtain session id" unless @session_id
         end
-        axapi(method,paramvalues)
+        return axapi(method,verb,paramvalues)
       end
     end
 
