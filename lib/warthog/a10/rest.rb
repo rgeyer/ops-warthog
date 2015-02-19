@@ -44,17 +44,27 @@ module Warthog; module A10
     protected
 
     def axapi(method,verb,paramvalues={})
+      paramvalues = Hash[paramvalues.map{|(k,v)| [k.to_s,v]}]
       always_uri_params = ["format","session_id","method"]
       if @session_id and @api_version
         r = nil
         if verb == 'get'
-          params_to_encode = {session_id: @session_id, method: method}.merge(paramvalues)
+          params_to_encode = {"session_id" => @session_id, "method" => method}.merge(paramvalues)
           params = URI.encode_www_form(params_to_encode)
-          uri = "https://#@hostname/services/rest/#@api_version/?#{params}"
+          uri = "https://#{@hostname}/services/rest/#{@api_version}/?#{params}"
           r = self.class.get(uri)
         else
-          # TODO: Implement everything else, supplying paramvalues as a json payload.
-          puts "Verb was #{verb.upcase}"
+          get_params_to_encode = {"session_id" => @session_id, "method" => method}.merge(paramvalues.select{|k,v| always_uri_params.include?(k)})
+          get_params = URI.encode_www_form(get_params_to_encode)
+          uri = "https://#{@hostname}/services/rest/#{@api_version}/?#{get_params}"
+          body = ""
+          # This is ugly, because we're "auto detecting" json...
+          if paramvalues.keys.include?('format') && paramvalues['format'].downcase == 'json'
+            body = JSON.generate(paramvalues.select{|k,v| !always_uri_params.include?(k)})
+          else
+            body = URI.encode_www_form(paramvalues.select{|k,v| !always_uri_params.include?(k)})
+          end
+          r = self.class.send(verb, uri, {body: body})
         end
 
         if r.code == 200
@@ -78,7 +88,7 @@ module Warthog; module A10
           end
 
           error_message = "Code: #{code} Message: #{message}"
-          raise AXapiError, error_message if code
+          raise AXapiError, error_message unless code == 0
           return r
         else
           raise HTTPError, "HTTP code: #{r.code}"
